@@ -1,4 +1,4 @@
-import NetflixClone from '../../netflix-clone.jsx';
+import NetflixClone from './NetflixClone';
 
 function App() {
   return <NetflixClone />;
