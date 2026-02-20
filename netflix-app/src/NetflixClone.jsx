@@ -1,4 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import movies, { GENRES } from "./moviesData";
+
+const BASE = import.meta.env.BASE_URL;
 
 // ==================== TRANSLATIONS ====================
 const T = {
@@ -76,26 +79,15 @@ const T = {
     },
 };
 
-// ==================== MOVIE DATA ====================
-const movies = [
-    { id: 1, title: "Black Panther", genre: "Action", rating: "PG-13", year: 2018, img: "/images/poster1.jpg", video: "/videos/mhv.mp4" },
-    { id: 2, title: "Pathaan", genre: "Action", rating: "UA", year: 2023, img: "/images/poster2.jpg", video: "/videos/pav.mp4" },
-    { id: 3, title: "Money Heist", genre: "Thriller", rating: "TV-MA", year: 2017, img: "/images/poster3.jpg", video: "/videos/pv.mp4" },
-    { id: 4, title: "Padmavati", genre: "Drama", rating: "UA", year: 2018, img: "/images/poster4.jpg", video: "/videos/mhv.mp4" },
-    { id: 5, title: "Raid", genre: "Thriller", rating: "UA", year: 2018, img: "/images/poster5.jpg", video: "/videos/pav.mp4" },
-    { id: 6, title: "Rogue One", genre: "Sci-Fi", rating: "PG-13", year: 2016, img: "/images/poster6.jpg", video: "/videos/pv.mp4" },
-    { id: 7, title: "Grey's Anatomy", genre: "Drama", rating: "TV-14", year: 2005, img: "/images/poster7.jpg", video: "/videos/mhv.mp4" },
-    { id: 8, title: "Bridgerton", genre: "Romance", rating: "TV-MA", year: 2020, img: "/images/poster8.jpg", video: "/videos/pav.mp4" },
-    { id: 9, title: "Stranger Things", genre: "Sci-Fi", rating: "TV-14", year: 2016, img: "/images/poster9.jpg", video: "/videos/pv.mp4" },
-    { id: 10, title: "The Abyss", genre: "Sci-Fi", rating: "PG-13", year: 1989, img: "/images/poster10.jpg", video: "/videos/mhv.mp4" },
-];
+// Movie data is imported from moviesData.js (100 movies)
 
 // ==================== MOVIE CARD (with hover video) ====================
-const MovieCard = ({ movie, isDark }) => {
+const MovieCard = ({ movie, isDark, isGrid = false }) => {
     const [hovered, setHovered] = useState(false);
     const [showVideo, setShowVideo] = useState(false);
     const timerRef = useRef(null);
     const videoRef = useRef(null);
+    const matchPercent = useMemo(() => Math.floor(75 + ((movie.id * 7) % 24)), [movie.id]);
 
     useEffect(() => {
         if (hovered) {
@@ -107,21 +99,27 @@ const MovieCard = ({ movie, isDark }) => {
         return () => clearTimeout(timerRef.current);
     }, [hovered]);
 
+    const genreColors = {
+        Action: "#e50914", Thriller: "#f5c518", "Sci-Fi": "#00d4ff",
+        Drama: "#b87cf7", Comedy: "#ff6f61", Horror: "#4caf50",
+        Romance: "#ff69b4", Animation: "#ffab40", Documentary: "#26c6da", Fantasy: "#ab47bc"
+    };
+
     return (
         <div
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             style={{
-                position: "relative", minWidth: 200, height: 300, borderRadius: 6,
+                position: "relative", minWidth: isGrid ? "auto" : 200, height: isGrid ? 320 : 300, borderRadius: 8,
                 overflow: "visible", cursor: "pointer", flexShrink: 0,
                 transition: "transform 0.35s cubic-bezier(.25,.8,.25,1), box-shadow 0.35s ease",
-                transform: hovered ? "scale(1.35)" : "scale(1)",
+                transform: hovered ? (isGrid ? "scale(1.05)" : "scale(1.35)") : "scale(1)",
                 zIndex: hovered ? 20 : 1,
                 boxShadow: hovered ? "0 16px 40px rgba(0,0,0,0.8)" : "none",
             }}
         >
             {/* Thumbnail / Video preview */}
-            <div style={{ width: "100%", height: "100%", borderRadius: hovered ? "6px 6px 0 0" : 6, overflow: "hidden", position: "relative" }}>
+            <div style={{ width: "100%", height: "100%", borderRadius: hovered ? "8px 8px 0 0" : 8, overflow: "hidden", position: "relative" }}>
                 {showVideo && movie.video ? (
                     <video
                         ref={videoRef}
@@ -134,6 +132,20 @@ const MovieCard = ({ movie, isDark }) => {
                         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                         onError={(e) => { e.target.src = `https://via.placeholder.com/200x300/1a1a2e/e50914?text=${encodeURIComponent(movie.title)}`; }}
                     />
+                )}
+                {/* Gradient overlay on poster */}
+                {!showVideo && (
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 40%, transparent 100%)" }} />
+                )}
+                {/* Title & genre badge on poster */}
+                {!showVideo && (
+                    <div style={{ position: "absolute", bottom: 10, left: 10, right: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                            <span style={{ background: genreColors[movie.genre] || "#e50914", color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 3, textTransform: "uppercase", letterSpacing: 0.5 }}>{movie.genre}</span>
+                            <span style={{ fontSize: 10, color: "#ccc" }}>{movie.year}</span>
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.9)", lineHeight: 1.2 }}>{movie.title}</div>
+                    </div>
                 )}
                 {/* Sound icon on video */}
                 {showVideo && (
@@ -148,43 +160,45 @@ const MovieCard = ({ movie, isDark }) => {
                 <div style={{
                     position: "absolute", top: "100%", left: 0, right: 0,
                     background: isDark ? "#181818" : "#fff",
-                    borderRadius: "0 0 6px 6px", padding: "12px",
+                    borderRadius: "0 0 8px 8px", padding: "12px",
                     color: isDark ? "#fff" : "#111",
                     animation: "fadeIn 0.2s ease",
                     boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
                 }}>
                     {/* Action buttons row */}
                     <div style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center" }}>
-                        <button style={{ background: "#fff", color: "#000", border: "none", borderRadius: "50%", width: 36, height: 36, fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.15s" }}
+                        <button style={{ background: "#fff", color: "#000", border: "none", borderRadius: "50%", width: 32, height: 32, fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.15s" }}
                             onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
                             onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
                         >▶</button>
-                        <button style={{ background: "transparent", border: "2px solid #888", borderRadius: "50%", width: 36, height: 36, color: isDark ? "#fff" : "#333", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "border-color 0.15s" }}
+                        <button style={{ background: "transparent", border: "2px solid #888", borderRadius: "50%", width: 32, height: 32, color: isDark ? "#fff" : "#333", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", transition: "border-color 0.15s" }}
                             onMouseEnter={e => e.currentTarget.style.borderColor = "#fff"}
                             onMouseLeave={e => e.currentTarget.style.borderColor = "#888"}
                         >+</button>
-                        <button style={{ background: "transparent", border: "2px solid #888", borderRadius: "50%", width: 36, height: 36, color: isDark ? "#fff" : "#333", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", transition: "border-color 0.15s" }}
+                        <button style={{ background: "transparent", border: "2px solid #888", borderRadius: "50%", width: 32, height: 32, color: isDark ? "#fff" : "#333", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", transition: "border-color 0.15s" }}
                             onMouseEnter={e => e.currentTarget.style.borderColor = "#fff"}
                             onMouseLeave={e => e.currentTarget.style.borderColor = "#888"}
                         >👍</button>
                         <div style={{ flex: 1 }} />
-                        <button style={{ background: "transparent", border: "2px solid #888", borderRadius: "50%", width: 36, height: 36, color: isDark ? "#fff" : "#333", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", transition: "border-color 0.15s" }}
+                        <button style={{ background: "transparent", border: "2px solid #888", borderRadius: "50%", width: 32, height: 32, color: isDark ? "#fff" : "#333", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", transition: "border-color 0.15s" }}
                             onMouseEnter={e => e.currentTarget.style.borderColor = "#fff"}
                             onMouseLeave={e => e.currentTarget.style.borderColor = "#888"}
                         >⌄</button>
                     </div>
                     {/* Metadata */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 12, color: "#46d369", fontWeight: 700 }}>98% Match</span>
-                        <span style={{ fontSize: 10, border: "1px solid #888", padding: "1px 5px", color: isDark ? "#bcbcbc" : "#555" }}>{movie.rating}</span>
-                        <span style={{ fontSize: 11, color: isDark ? "#bcbcbc" : "#555" }}>1h 45m</span>
-                        <span style={{ fontSize: 10, border: "1px solid #888", padding: "1px 5px", color: isDark ? "#bcbcbc" : "#555" }}>HD</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 12, color: matchPercent >= 90 ? "#46d369" : matchPercent >= 80 ? "#8cc63f" : "#d4a017", fontWeight: 700 }}>{matchPercent}% Match</span>
+                        <span style={{ fontSize: 10, border: "1px solid #888", padding: "1px 5px", borderRadius: 2, color: isDark ? "#bcbcbc" : "#555" }}>{movie.rating}</span>
+                        <span style={{ fontSize: 11, color: isDark ? "#bcbcbc" : "#555" }}>{movie.duration || "1h 45m"}</span>
+                        <span style={{ fontSize: 10, border: "1px solid #888", padding: "1px 5px", borderRadius: 2, color: isDark ? "#bcbcbc" : "#555" }}>HD</span>
                     </div>
+                    {/* Description */}
+                    {movie.description && (
+                        <p style={{ fontSize: 11, color: isDark ? "#aaa" : "#666", lineHeight: 1.4, marginBottom: 6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{movie.description}</p>
+                    )}
                     {/* Genre tags */}
                     <div style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 11, color: isDark ? "#ddd" : "#444" }}>
                         <span>{movie.genre}</span>
-                        <span style={{ color: isDark ? "#646464" : "#bbb" }}>•</span>
-                        <span>Exciting</span>
                         <span style={{ color: isDark ? "#646464" : "#bbb" }}>•</span>
                         <span>{movie.year}</span>
                     </div>
@@ -195,25 +209,64 @@ const MovieCard = ({ movie, isDark }) => {
 };
 
 // ==================== MOVIE ROW ====================
-const MovieRow = ({ title, movies: rowMovies, startIdx = 0, isDark }) => {
-    const scrollRef = useRef(null);
-    const visibleMovies = rowMovies.slice(startIdx, startIdx + 8);
-    const scroll = (dir) => {
-        if (scrollRef.current) scrollRef.current.scrollBy({ left: dir * 600, behavior: "smooth" });
+const MovieRow = ({ title, movies: rowMovies, isDark }) => {
+    const [rowHovered, setRowHovered] = useState(false);
+    const [slideOffset, setSlideOffset] = useState(0);
+    const containerRef = useRef(null);
+
+    const slide = (dir) => {
+        const containerWidth = containerRef.current ? containerRef.current.offsetWidth : 900;
+        const cardWidth = 210; // card min-width + gap
+        const totalWidth = rowMovies.length * cardWidth;
+        const maxOffset = Math.max(0, totalWidth - containerWidth);
+        setSlideOffset(prev => Math.min(maxOffset, Math.max(0, prev + dir * containerWidth * 0.75)));
     };
+
     return (
-        <div style={{ marginBottom: 50, position: "relative" }}>
-            <h2 style={{ color: isDark ? "#e5e5e5" : "#111", fontSize: 22, fontWeight: 700, marginBottom: 14, paddingLeft: 4 }}>{title}</h2>
-            <div style={{ position: "relative" }}>
-                <button onClick={() => scroll(-1)} style={{ position: "absolute", left: -20, top: "50%", transform: "translateY(-50%)", zIndex: 30, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 40, height: 40, fontSize: 20, cursor: "pointer", opacity: 0.7 }}>‹</button>
-                <div ref={scrollRef} style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 120, paddingTop: 20, scrollbarWidth: "none", scrollBehavior: "smooth" }}>
-                    {visibleMovies.map(m => <MovieCard key={m.id} movie={m} isDark={isDark} />)}
+        <div style={{ marginBottom: -160, position: "relative", zIndex: rowHovered ? 10 : 1 }}
+            onMouseEnter={() => setRowHovered(true)}
+            onMouseLeave={() => setRowHovered(false)}
+        >
+            <h2 style={{ color: isDark ? "#e5e5e5" : "#111", fontSize: 22, fontWeight: 700, marginBottom: 0, paddingLeft: 4, position: "relative", zIndex: 2 }}>{title}</h2>
+            <div ref={containerRef} style={{ position: "relative", overflow: "clip" }}>
+                <button onClick={() => slide(-1)} style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", zIndex: 30, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", borderRadius: "50%", width: 44, height: 44, fontSize: 22, cursor: "pointer", opacity: slideOffset > 0 ? 0.8 : 0, pointerEvents: slideOffset > 0 ? "auto" : "none", transition: "opacity 0.2s, background 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = "rgba(229,9,20,0.8)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = 0.8; e.currentTarget.style.background = "rgba(0,0,0,0.7)"; }}
+                >‹</button>
+                <div style={{ display: "flex", gap: 10, paddingBottom: 200, paddingTop: 70, marginTop: -56, transform: `translateX(-${slideOffset}px)`, transition: "transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1)" }}>
+                    {rowMovies.map(m => <MovieCard key={m.id} movie={m} isDark={isDark} />)}
                 </div>
-                <button onClick={() => scroll(1)} style={{ position: "absolute", right: -20, top: "50%", transform: "translateY(-50%)", zIndex: 30, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 40, height: 40, fontSize: 20, cursor: "pointer", opacity: 0.7 }}>›</button>
+                <button onClick={() => slide(1)} style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", zIndex: 30, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", borderRadius: "50%", width: 44, height: 44, fontSize: 22, cursor: "pointer", opacity: 0.8, transition: "opacity 0.2s, background 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = "rgba(229,9,20,0.8)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = 0.8; e.currentTarget.style.background = "rgba(0,0,0,0.7)"; }}
+                >›</button>
             </div>
         </div>
     );
 };
+
+// ==================== SEARCH RESULTS GRID ====================
+const SearchResultsGrid = ({ results, isDark, onClear, query }) => (
+    <div style={{ padding: "0 48px 60px", marginTop: -80, position: "relative", zIndex: 1 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, paddingTop: 20 }}>
+            <div>
+                <h2 style={{ color: isDark ? "#fff" : "#111", fontSize: 24, fontWeight: 700, margin: 0 }}>
+                    {results.length > 0 ? `Found ${results.length} result${results.length !== 1 ? 's' : ''} for "${query}"` : `No results for "${query}"`}
+                </h2>
+                {results.length === 0 && (
+                    <p style={{ color: isDark ? "#999" : "#777", fontSize: 14, marginTop: 8 }}>Try searching for a different title, genre, or year.</p>
+                )}
+            </div>
+            <button onClick={onClear} style={{ background: "rgba(229,9,20,0.1)", color: "#e50914", border: "1px solid #e50914", borderRadius: 6, padding: "8px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#e50914"; e.currentTarget.style.color = "#fff"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(229,9,20,0.1)"; e.currentTarget.style.color = "#e50914"; }}
+            >✕ Clear Search</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
+            {results.map(m => <MovieCard key={m.id} movie={m} isDark={isDark} isGrid />)}
+        </div>
+    </div>
+);
 
 // ==================== FAQ ITEM ====================
 const FAQItem = ({ q, a, isDark }) => {
@@ -261,6 +314,7 @@ export default function NetflixClone() {
     const [videoModal, setVideoModal] = useState(null);
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [genreFilter, setGenreFilter] = useState("All");
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 50);
@@ -287,9 +341,33 @@ export default function NetflixClone() {
         { icon: "👶", title: t("kidsProfile"), desc: t("kidsProfileDesc") },
     ];
 
-    const filteredMovies = searchQuery
-        ? movies.filter(m => m.title.toLowerCase().includes(searchQuery.toLowerCase()))
-        : movies;
+    const filteredMovies = useMemo(() => {
+        let result = movies;
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(m =>
+                m.title.toLowerCase().includes(q) ||
+                m.genre.toLowerCase().includes(q) ||
+                String(m.year).includes(q)
+            );
+        }
+        if (genreFilter !== "All" && !searchQuery) {
+            result = result.filter(m => m.genre === genreFilter);
+        }
+        return result;
+    }, [searchQuery, genreFilter]);
+
+    const moviesByGenre = useMemo(() => {
+        const source = genreFilter !== "All" ? filteredMovies : movies;
+        const grouped = {};
+        source.forEach(m => {
+            if (!grouped[m.genre]) grouped[m.genre] = [];
+            grouped[m.genre].push(m);
+        });
+        return grouped;
+    }, [filteredMovies, genreFilter]);
+
+    const isSearching = searchQuery.length > 0;
 
     // ==================== STYLES ====================
     const globalStyles = `
@@ -327,7 +405,7 @@ export default function NetflixClone() {
 
                 {/* HERO */}
                 <div style={{ position: "relative", height: "100vh", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <img src="/images/header-image.jpg" alt="Netflix Background" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", opacity: isDark ? 0.4 : 0.25 }} />
+                    <img src={`${BASE}images/header-image.jpg`} alt="Netflix Background" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", opacity: isDark ? 0.4 : 0.25 }} />
                     <div style={{ position: "absolute", inset: 0, background: isDark ? "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.5) 50%, #000 100%)" : "linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.6) 50%, #f5f5f5 100%)" }} />
 
                     <div style={{ position: "relative", textAlign: "center", padding: "0 20px", animation: "slideUp 0.8s ease", maxWidth: 800 }}>
@@ -445,29 +523,54 @@ export default function NetflixClone() {
             <div style={{ position: "relative", height: "85vh", overflow: "hidden" }}>
                 <video
                     autoPlay muted loop playsInline
-                    poster="/images/header-image.jpg"
+                    poster={`${BASE}images/header-image.jpg`}
                     style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                    src="/videos/hero.mp4"
-                    onError={(e) => { e.target.src = "/videos/BPV.mp4"; }}
+                    src={`${BASE}videos/hero.mp4`}
+                    onError={(e) => { e.target.src = `${BASE}videos/BPV.mp4`; }}
                 />
                 <div style={{ position: "absolute", inset: 0, background: isDark ? "linear-gradient(to right, rgba(0,0,0,0.85) 35%, transparent 100%), linear-gradient(to top, #141414 0%, transparent 50%)" : "linear-gradient(to right, rgba(255,255,255,0.9) 35%, transparent 100%), linear-gradient(to top, #f5f5f5 0%, transparent 50%)" }} />
                 <div style={{ position: "absolute", bottom: "20%", left: 48, maxWidth: 550, animation: "fadeIn 1s ease" }}>
                     <h1 style={{ fontSize: 60, fontWeight: 900, color: isDark ? "#fff" : "#111", textShadow: isDark ? "2px 2px 8px rgba(0,0,0,0.6)" : "none", marginBottom: 16 }}>Stranger Things</h1>
                     <p style={{ color: isDark ? "#e5e5e5" : "#555", fontSize: 16, lineHeight: 1.6, marginBottom: 24 }}>When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces, and one strange little girl.</p>
                     <div style={{ display: "flex", gap: 12 }}>
-                        <button onClick={() => setVideoModal("/videos/BPV.mp4")} style={{ background: "#fff", color: "#000", border: "none", borderRadius: 6, padding: "12px 28px", fontSize: 18, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, transition: "transform 0.2s, background 0.2s" }} onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.background = "#e6e6e6"; }} onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "#fff"; }}>{t("play")}</button>
+                        <button onClick={() => setVideoModal(`${BASE}videos/BPV.mp4`)} style={{ background: "#fff", color: "#000", border: "none", borderRadius: 6, padding: "12px 28px", fontSize: 18, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, transition: "transform 0.2s, background 0.2s" }} onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.background = "#e6e6e6"; }} onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "#fff"; }}>{t("play")}</button>
                         <button style={{ background: isDark ? "rgba(109,109,110,0.7)" : "rgba(0,0,0,0.1)", color: isDark ? "#fff" : "#111", border: "none", borderRadius: 6, padding: "12px 24px", fontSize: 18, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(4px)", transition: "transform 0.2s" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>{t("moreInfo")}</button>
                     </div>
                 </div>
             </div>
 
-            {/* MOVIE ROWS */}
-            <div style={{ padding: "0 48px 60px", marginTop: -80, position: "relative", zIndex: 1 }}>
-                <MovieRow title={t("trending")} movies={filteredMovies} startIdx={0} isDark={isDark} />
-                <MovieRow title={t("continueWatching")} movies={[...filteredMovies].reverse()} startIdx={0} isDark={isDark} />
-                <MovieRow title={t("newReleases")} movies={filteredMovies} startIdx={2} isDark={isDark} />
-                <MovieRow title={t("topPicks")} movies={[...filteredMovies].sort(() => 0.5 - Math.random())} startIdx={0} isDark={isDark} />
+            {/* GENRE FILTER BAR */}
+            <div style={{ padding: "0 48px", marginTop: -60, position: "relative", zIndex: 2, marginBottom: 20 }}>
+                <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none" }}>
+                    {["All", ...GENRES].map(g => (
+                        <button key={g} onClick={() => setGenreFilter(g)} style={{
+                            background: genreFilter === g ? "#e50914" : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"),
+                            color: genreFilter === g ? "#fff" : (isDark ? "#ccc" : "#555"),
+                            border: genreFilter === g ? "1px solid #e50914" : (isDark ? "1px solid #444" : "1px solid #ddd"),
+                            borderRadius: 20, padding: "7px 18px", fontSize: 13, fontWeight: genreFilter === g ? 700 : 500,
+                            cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.25s", flexShrink: 0,
+                            backdropFilter: "blur(8px)"
+                        }}
+                            onMouseEnter={e => { if (genreFilter !== g) { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)"; } }}
+                            onMouseLeave={e => { if (genreFilter !== g) { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"; } }}
+                        >{g}</button>
+                    ))}
+                </div>
             </div>
+
+            {/* MOVIE CONTENT */}
+            {isSearching ? (
+                <SearchResultsGrid results={filteredMovies} isDark={isDark} query={searchQuery} onClear={() => { setSearchQuery(""); setSearchOpen(false); }} />
+            ) : (
+                <div style={{ padding: "0 48px 60px", position: "relative", zIndex: 1 }}>
+                    {/* Trending row — top 10 */}
+                    <MovieRow title={t("trending")} movies={movies.slice(0, 10)} isDark={isDark} />
+                    {/* Genre-based rows */}
+                    {Object.entries(moviesByGenre).map(([genre, genreMovies]) => (
+                        <MovieRow key={genre} title={genre} movies={genreMovies} isDark={isDark} />
+                    ))}
+                </div>
+            )}
 
             {/* FOOTER */}
             <footer style={{ padding: "32px 48px", borderTop: isDark ? "1px solid #333" : "1px solid #ddd", background: isDark ? "#000" : "#f5f5f5", color: isDark ? "#757575" : "#888" }}>
